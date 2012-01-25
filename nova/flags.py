@@ -261,7 +261,7 @@ DEFINE_string('my_ip', _get_my_ip(), 'host ip address')
 DEFINE_list('region_list',
             [],
             'list of region=fqdn pairs separated by commas')
-DEFINE_string('connection_type', None, 'libvirt, xenapi or fake')
+DEFINE_string('connection_type', 'vboxapi', 'libvirt, xenapi or fake')
 DEFINE_string('aws_access_key_id', 'admin', 'AWS Access ID')
 DEFINE_string('aws_secret_access_key', 'admin', 'AWS Access Key')
 # NOTE(sirp): my_ip interpolation doesn't work within nested structures
@@ -460,7 +460,7 @@ DEFINE_bool('allow_resize_to_same_host', False,
             'Allow destination machine to match source for resize. Useful'
             ' when testing in environments with only one host machine.')
 
-DEFINE_string('stub_network', False,
+DEFINE_string('stub_network', True,
               'Stub network related code')
 
 DEFINE_integer('reclaim_instance_interval', 0,

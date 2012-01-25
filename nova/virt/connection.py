@@ -24,7 +24,7 @@ import sys
 from nova import flags
 from nova import log as logging
 from nova import utils
-from nova.virt import driver
+from nova.virt import driver, vboxapi_conn
 from nova.virt import fake
 from nova.virt import hyperv
 from nova.virt.libvirt import connection as libvirt_conn
@@ -71,6 +71,8 @@ def get_connection(read_only=False):
         conn = hyperv.get_connection(read_only)
     elif t == 'vmwareapi':
         conn = vmwareapi_conn.get_connection(read_only)
+    elif t == 'vboxapi':
+        conn = vboxapi_conn.get_connection(read_only)
     else:
         raise Exception('Unknown connection type "%s"' % t)
 
