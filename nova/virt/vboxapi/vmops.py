@@ -142,11 +142,55 @@ class VBoxVMOps(object):
         try:
             machine = self.vbox.findMachine(instance.uuid)
         except:
-            # TODO: LOG
-            return
+            raise exception.InstanceNotFound(name=instance.name)
 
         self.power_down(machine)
         self.delete_machine(machine)
+    
+    def reboot(self, instance, network_info):
+        try:
+            machine = self.vbox.findMachine(instance.name)
+        except:
+            raise exception.InstanceNotFound(name=instance.name)
+
+        session = self._get_session()
+        machine.lockMachine(session, constants.LT_SHARED)
+        try:
+            session.console.reset()
+        except:
+            raise exception.InstanceRebootFailure(name=instance.name)
+        finally:
+            session.unlockMachine()
+        
+    def pause(self, instance):
+        try:
+            machine = self.vbox.findMachine(instance.name)
+        except:
+            raise exception.InstanceNotFound(name=instance.name)
+
+        session = self._get_session()
+        machine.lockMachine(session, constants.LT_SHARED)
+        try:
+            session.console.pause()
+        except:
+            raise exception.InstanceSuspendFailure(name=instance.name)
+        finally:
+            session.unlockMachine()
+    
+    def resume(self, instance):
+        try:
+            machine = self.vbox.findMachine(instance.name)
+        except:
+            raise exception.InstanceNotFound(name=instance.name)
+
+        session = self._get_session()
+        machine.lockMachine(session, constants.LT_SHARED)
+        try:
+            session.console.pause()
+        except:
+            raise exception.InstanceResumeFailure(name=instance.name)
+        finally:
+            session.unlockMachine()
     
     def _boot_machine(self, machine):
         session = self._get_session()

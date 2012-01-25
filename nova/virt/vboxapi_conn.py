@@ -93,21 +93,21 @@ class VBoxConnection(driver.ComputeDriver):
 #        """Create snapshot from a running VM instance."""
 #        self._vmops.snapshot(context, instance, name)
 #
-#    def reboot(self, instance, network_info, reboot_type):
-#        """Reboot VM instance."""
-#        self._vmops.reboot(instance, network_info)
+    def reboot(self, instance, network_info, reboot_type):
+        """Reboot VM instance."""
+        self._vmops.reboot(instance, network_info)
 #
     def destroy(self, instance, network_info, block_device_info=None):
         """Destroy VM instance."""
         self._vmops.destroy(instance, network_info)
-#
-#    def pause(self, instance):
-#        """Pause VM instance."""
-#        self._vmops.pause(instance)
-#
-#    def unpause(self, instance):
-#        """Unpause paused VM instance."""
-#        self._vmops.unpause(instance)
+
+    def pause(self, instance):
+        """Pause VM instance."""
+        self._vmops.pause(instance)
+
+    def unpause(self, instance):
+        """Unpause paused VM instance."""
+        self._vmops.unpause(instance)
 #
 #    def suspend(self, instance):
 #        """Suspend the specified instance."""
