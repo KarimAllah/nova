@@ -38,6 +38,7 @@ import types
 import uuid
 import warnings
 from xml.sax import saxutils
+from socket import socket, AF_INET, SOCK_STREAM
 
 from eventlet import event
 from eventlet import greenthread
@@ -1409,3 +1410,12 @@ def service_is_up(service):
     # Timestamps in DB are UTC.
     elapsed = total_seconds(utcnow() - last_heartbeat)
     return abs(elapsed) <= FLAGS.service_down_time
+
+def port_available(port,ip='127.0.0.1', timeout=2):
+        s = socket(AF_INET, SOCK_STREAM)
+        s.settimeout(timeout)
+        try:
+            s.connect((ip, port))
+        except:
+            return False
+        return True

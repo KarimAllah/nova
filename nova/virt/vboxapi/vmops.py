@@ -1,10 +1,13 @@
 import os
+import psutil
 import shutil
+import subprocess
 from time import sleep
+from random import randint
 from vboxapi import VirtualBoxManager
 
 from nova.virt.vboxapi import constants
-from nova import exception, flags
+from nova import exception, flags, utils
 from nova.compute import power_state
 from nova.virt import driver
 from nova.image import glance
@@ -17,10 +20,11 @@ flags.DEFINE_string('instances_dir',
                     '/tmp/instances',
                     'Location of installed VirtualBox machines settings and disks')
 
-flags.DEFINE_string('default_image_format',
-                    'vdi',
-                    'Default image format')
+flags.DEFINE_string('default_image_format', 'vdi', 'Default image format')
 
+flags.DEFINE_string('frontend_type', 'vnc', 'gui and vnc')
+
+flags.DEFINE_list('vnc_range', [1024, 10024], 'port range')
 
 VBOX_POWER_STATES = {
                    constants.POWEREDOFF: power_state.SHUTDOWN,
@@ -79,12 +83,14 @@ class VBoxVMOps(object):
         
         # The machine is locked by a WRITE session because it's running. So we can only use a READ/SHARED session
         machine.lockMachine(session, constants.LT_SHARED)
-#        try:
-        progress = session.console.powerDown()
-        progress.waitForCompletion(-1)
-#        except:
-#            # If an error occured we don't want the machine to get stuck with this locked session.
-#            session.unlockMachine()
+        try:
+            progress = session.console.powerDown()
+            progress.waitForCompletion(-1)
+        except:
+            pass
+        finally:
+            # If an error occured we don't want the machine to get stuck with this locked session for ever.
+            session.unlockMachine()
         
         # Wait until all locked sessions become unlocked.
         while machine.sessionState != 1:
@@ -192,12 +198,35 @@ class VBoxVMOps(object):
         finally:
             session.unlockMachine()
     
+    def get_vnc_console(self, instance):
+        if FLAGS.frontend_type != 'vnc':
+            raise NotImplemented()
+
+        instance_id = instance.name
+        p = subprocess.Popen(['pgrep', '-f', 'VBoxHeadless -s %s -n -m ' % instance_id], stdout=subprocess.PIPE)
+        output = p.stdout.read()
+        pid = output.strip()
+        p = psutil.Process(int(pid))
+        port = p.cmdline[5]
+        return {'host': 'localhost', 'port': port , 'internal_access_path': None}
+
     def _boot_machine(self, machine):
-        session = self._get_session()
-        progress = machine.launchVMProcess(session, "gui", "")
-        progress.waitForCompletion(-1)
-        #session.unlockMachine()
-    
+        if FLAGS.frontend_type == "gui":
+            session = self._get_session()
+            progress = machine.launchVMProcess(session, "gui", "")
+            progress.waitForCompletion(-1)
+        elif FLAGS.frontend_type == "vnc":
+            '''
+                VBoxHeadless -s machine.id -n -m %(port)s -o %(pass)s -w %(width)s -h %(height)s
+            '''
+            available = False
+            min_port, max_port = FLAGS.vnc_range
+            while not available:
+                random_port = randint(min_port, max_port)
+                available = utils.port_available(random_port)
+                
+            subprocess.Popen(['VBoxHeadless', '-s', machine.id, '-n', '-m', str(random_port), '-o', utils.generate_password(10)])
+
     def _fetch_image(self, context, instance):
         (glance_client, image_id) = glance.get_glance_client(context, instance.image_ref)
         meta_data, read_iter = glance_client.get_image(image_id)
@@ -253,13 +282,18 @@ class VBoxVMOps(object):
 
         session = self._get_session()
         machine.lockMachine(session, constants.LT_WRITE)
-        
-        medium = self.open_medium(disk_location, force_new_uuid=True)
-        session.machine.attachDevice(controller_name, 0, 0, constants.DT_HARDDISK, medium)
-        
-        # Now that our machine is fully configured, save the settings now.
-        session.machine.saveSettings()
-        session.unlockMachine()
+        try:
+            medium = self.open_medium(disk_location, force_new_uuid=True)
+            session.machine.attachDevice(controller_name, 0, 0, constants.DT_HARDDISK, medium)
+            
+            # Now that our machine is fully configured, save the settings now.
+            session.machine.saveSettings()
+        except:
+            # FIXME: Handle this properly
+            pass
+        finally:
+            session.unlockMachine()
+
         return machine
     
     def _init_machine(self, context, instance):

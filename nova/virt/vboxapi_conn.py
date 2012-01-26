@@ -28,16 +28,6 @@ from nova.virt import driver
 LOG = logging.getLogger("nova.virt.vboxapi_conn")
 
 
-class Failure(Exception):
-    """Base Exception class for handling task failures."""
-
-    def __init__(self, details):
-        self.details = details
-
-    def __str__(self):
-        return str(self.details)
-
-
 def get_connection(read_only = False):
     """Sets up the VBoxAPI connection."""
     return VBoxConnection(read_only)
@@ -120,6 +110,10 @@ class VBoxConnection(driver.ComputeDriver):
     def get_info(self, instance_name):
         """Return info about the VM instance."""
         return self._vmops.get_info(instance_name)
+    
+    def get_vnc_console(self, instance):
+        """Return link to instance's vnc console"""
+        return self._vmops.get_vnc_console(instance)
 #
 #    def get_diagnostics(self, instance):
 #        """Return data about VM diagnostics."""
